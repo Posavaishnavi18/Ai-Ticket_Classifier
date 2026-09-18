@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Triage — Ticket Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F6F8;
+    --surface: #FFFFFF;
+    --text: #14171C;
+    --text-muted: #5B6270;
+    --text-faint: #9297A3;
+    --border: #E2E4E9;
+    --border-soft: #EDEEF1;
+    --brand: #4338CA;
+    --brand-soft: #EEF0FD;
+    --high: #DC2626;
+    --high-soft: #FDECEC;
+    --medium: #B45309;
+    --medium-soft: #FEF3E2;
+    --low: #15803D;
+    --low-soft: #EAF7EE;
+    --radius: 6px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .brand {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+  }
+
+  .brand span { color: var(--brand); }
+
+  .stats {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+
+  .stats strong { color: var(--text); font-weight: 500; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 0;
+    max-width: 1180px;
+    margin: 0 auto;
+    min-height: calc(100vh - 65px);
+  }
+
+  .intake {
+    padding: 28px 24px;
+    border-right: 1px solid var(--border);
+  }
+
+  .intake h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+
+  .intake p.sub {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0 0 20px;
+  }
+
+  label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+
+  label:first-of-type { margin-top: 0; }
+
+  input[type="text"], textarea {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 13.5px;
+    background: var(--surface);
+    color: var(--text);
+    resize: vertical;
+  }
+
+  input[type="text"]:focus, textarea:focus {
+    outline: 2px solid var(--brand);
+    outline-offset: -1px;
+    border-color: var(--brand);
+  }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .submit-btn {
+    width: 100%;
+    margin-top: 18px;
+    padding: 10px;
+    background: var(--brand);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+
+  .submit-btn:not(:disabled):hover { background: #372FA8; }
+
+  .form-hint {
+    margin-top: 10px;
+    font-size: 12.5px;
+    min-height: 16px;
+  }
+
+  .form-hint.error { color: var(--high); }
+  .form-hint.ok { color: var(--low); }
+
+  .queue { padding: 28px 24px; }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .filter-chip {
+    padding: 5px 11px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .filter-chip.active {
+    background: var(--text);
+    border-color: var(--text);
+    color: white;
+  }
+
+  .refresh-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 5px 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .refresh-btn:hover { color: var(--text); border-color: var(--text-faint); }
+
+  .empty {
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13.5px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+  }
+
+  .ticket-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--border-soft);
+    border-left: 3px solid transparent;
+  }
+
+  .ticket-row.urgency-high { border-left-color: var(--high); }
+  .ticket-row.urgency-medium { border-left-color: var(--medium); }
+  .ticket-row.urgency-low { border-left-color: var(--low); }
+
+  .ticket-row .id {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-faint);
+    padding-top: 2px;
+    min-width: 32px;
+  }
+
+  .ticket-main { flex: 1; min-width: 0; }
+
+  .ticket-subject {
+    font-weight: 500;
+    margin: 0 0 3px;
+  }
+
+  .ticket-desc {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0 0 8px;
+    overflow-wrap: anywhere;
+  }
+
+  .tag-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+  .tag {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--border-soft);
+    color: var(--text-muted);
+  }
+
+  .tag.urgency-high { background: var(--high-soft); color: var(--high); }
+  .tag.urgency-medium { background: var(--medium-soft); color: var(--medium); }
+  .tag.urgency-low { background: var(--low-soft); color: var(--low); }
+
+  .time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  .row-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .ticket-row:hover .row-actions,
+  .ticket-row:focus-within .row-actions { opacity: 1; }
+
+  .icon-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon-btn:hover { border-color: var(--text-faint); color: var(--text); }
+  .icon-btn.danger:hover { border-color: var(--high); color: var(--high); }
+
+  .edit-panel {
+    margin-top: 10px;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .edit-panel textarea, .edit-panel input {
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 7px 9px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+  }
+  .edit-actions { display: flex; gap: 8px; }
+  .edit-actions button {
+    padding: 6px 12px;
+    border-radius: var(--radius);
+    font-size: 12.5px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .edit-actions .save-btn { background: var(--brand); color: white; border-color: var(--brand); }
+
+  @media (max-width: 760px) {
+    .layout { grid-template-columns: 1fr; }
+    .intake { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Tri<span>age</span></div>
+  <div class="stats" id="stats">Loading…</div>
+</div>
+
+<div class="layout">
+  <aside class="intake">
+    <h2>New ticket</h2>
+    <p class="sub">Category and urgency are assigned automatically.</p>
+    <form id="ticketForm">
+      <label for="subjectInput">Subject</label>
+      <input type="text" id="subjectInput" placeholder="Short summary of the issue" required>
+
+      <label for="descInput">Description</label>
+      <textarea id="descInput" rows="6" placeholder="What's happening, in the customer's words" required></textarea>
+
+      <button type="submit" class="submit-btn" id="submitBtn">Submit ticket</button>
+      <p class="form-hint" id="formHint"></p>
+    </form>
+  </aside>
+
+  <main class="queue">
+    <div class="toolbar">
+      <div class="filter-group" id="categoryFilters"></div>
+      <button class="refresh-btn" id="refreshBtn">Refresh</button>
+    </div>
+    <div id="listArea">
+      <div class="empty">Loading tickets…</div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const API = '/api/tickets';
+  let tickets = [];
+  let activeCategory = 'All';
+
+  const listArea = document.getElementById('listArea');
+  const statsEl = document.getElementById('stats');
+  const categoryFiltersEl = document.getElementById('categoryFilters');
+  const form = document.getElementById('ticketForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const formHint = document.getElementById('formHint');
+
+  function relativeTime(iso) {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    const days = Math.floor(hrs / 24);
+    return days + 'd ago';
+  }
+
+  function urgencyClass(u) {
+    if (!u) return '';
+    const v = u.toLowerCase();
+    if (v === 'high') return 'urgency-high';
+    if (v === 'medium') return 'urgency-medium';
+    if (v === 'low') return 'urgency-low';
+    return '';
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+
+  async function fetchTickets() {
+    try {
+      const res = await fetch(API);
+      if (!res.ok) throw new Error('Server responded with ' + res.status);
+      tickets = await res.json();
+      render();
+    } catch (err) {
+      listArea.innerHTML = '<div class="empty">Can\'t reach the server. Make sure the Spring Boot app is running on this port.</div>';
+      statsEl.textContent = 'Offline';
+    }
+  }
+
+  function render() {
+    const sorted = [...tickets].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const highCount = tickets.filter(t => (t.urgency || '').toLowerCase() === 'high').length;
+    statsEl.innerHTML = '<strong>' + tickets.length + '</strong> ticket' + (tickets.length === 1 ? '' : 's') +
+      (highCount ? '  ·  <strong>' + highCount + '</strong> high urgency' : '');
+
+    const categories = ['All', ...new Set(tickets.map(t => t.category).filter(Boolean))];
+    categoryFiltersEl.innerHTML = categories.map(c =>
+      '<button class="filter-chip' + (c === activeCategory ? ' active' : '') + '" data-cat="' + escapeHtml(c) + '">' + escapeHtml(c) + '</button>'
+    ).join('');
+    categoryFiltersEl.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => { activeCategory = btn.dataset.cat; render(); });
+    });
+
+    const filtered = activeCategory === 'All' ? sorted : sorted.filter(t => t.category === activeCategory);
+
+    if (filtered.length === 0) {
+      listArea.innerHTML = '<div class="empty">No tickets yet. Submit one on the left to see it classified here.</div>';
+      return;
+    }
+
+    listArea.innerHTML = filtered.map(t => rowHtml(t)).join('');
+
+    filtered.forEach(t => {
+      const row = document.getElementById('row-' + t.id);
+      row.querySelector('.edit-trigger').addEventListener('click', () => toggleEdit(t.id));
+      row.querySelector('.delete-trigger').addEventListener('click', () => deleteTicket(t.id));
+    });
+  }
+
+  function rowHtml(t) {
+    const uClass = urgencyClass(t.urgency);
+    return (
+      '<div class="ticket-row ' + uClass + '" id="row-' + t.id + '">' +
+        '<div class="id">#' + t.id + '</div>' +
+        '<div class="ticket-main">' +
+          '<p class="ticket-subject">' + escapeHtml(t.subject) + '</p>' +
+          '<p class="ticket-desc">' + escapeHtml(t.description) + '</p>' +
+          '<div class="tag-row">' +
+            (t.category ? '<span class="tag">' + escapeHtml(t.category) + '</span>' : '') +
+            (t.urgency ? '<span class="tag ' + uClass + '">' + escapeHtml(t.urgency) + '</span>' : '') +
+            '<span class="time">' + relativeTime(t.createdAt) + '</span>' +
+          '</div>' +
+          '<div class="edit-slot" id="edit-slot-' + t.id + '"></div>' +
+        '</div>' +
+        '<div class="row-actions">' +
+          '<button class="icon-btn edit-trigger" title="Edit">&#9998;</button>' +
+          '<button class="icon-btn danger delete-trigger" title="Delete">&#10005;</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function toggleEdit(id) {
+    const slot = document.getElementById('edit-slot-' + id);
+    if (slot.dataset.open === 'true') {
+      slot.innerHTML = '';
+      slot.dataset.open = 'false';
+      return;
+    }
+    const t = tickets.find(x => x.id === id);
+    slot.dataset.open = 'true';
+    slot.innerHTML =
+      '<div class="edit-panel">' +
+        '<input type="text" class="edit-subject" value="' + escapeHtml(t.subject) + '">' +
+        '<textarea class="edit-desc" rows="3">' + escapeHtml(t.description) + '</textarea>' +
+        '<div class="edit-actions">' +
+          '<button class="save-btn">Save</button>' +
+          '<button class="cancel-btn">Cancel</button>' +
+        '</div>' +
+      '</div>';
+    slot.querySelector('.cancel-btn').addEventListener('click', () => toggleEdit(id));
+    slot.querySelector('.save-btn').addEventListener('click', () => saveEdit(id));
+  }
+
+  async function saveEdit(id) {
+    const slot = document.getElementById('edit-slot-' + id);
+    const subject = slot.querySelector('.edit-subject').value.trim();
+    const description = slot.querySelector('.edit-desc').value.trim();
+    if (!subject || !description) return;
+    try {
+      const res = await fetch(API + '/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, description })
+      });
+      if (!res.ok) throw new Error();
+      const updated = await res.json();
+      tickets = tickets.map(t => t.id === id ? updated : t);
+      render();
+    } catch {
+      alert('Could not save changes. Please try again.');
+    }
+  }
+
+  async function deleteTicket(id) {
+    if (!confirm('Delete ticket #' + id + '? This cannot be undone.')) return;
+    try {
+      const res = await fetch(API + '/' + id, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      tickets = tickets.filter(t => t.id !== id);
+      render();
+    } catch {
+      alert('Could not delete this ticket. Please try again.');
+    }
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const subject = document.getElementById('subjectInput').value.trim();
+    const description = document.getElementById('descInput').value.trim();
+    if (!subject || !description) return;
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Classifying…';
+    formHint.textContent = '';
+    formHint.className = 'form-hint';
+
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, description })
+      });
+      if (!res.ok) throw new Error('Server responded with ' + res.status);
+      const created = await res.json();
+      tickets.unshift(created);
+      form.reset();
+      formHint.textContent = 'Classified as ' + created.category + ' · ' + created.urgency + ' urgency.';
+      formHint.className = 'form-hint ok';
+      render();
+    } catch (err) {
+      formHint.textContent = 'Could not submit the ticket. Check that the server is running.';
+      formHint.className = 'form-hint error';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit ticket';
+    }
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', fetchTickets);
+
+  fetchTickets();
+</script>
+
+</body>
+</html>
